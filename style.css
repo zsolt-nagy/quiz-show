@@ -1,6 +1,8 @@
 html {
     box-sizing: border-box;
     --bg: darkblue;
+    --bg-hover: #0000bb;
+    --font: gold;
 }
 
 * {
@@ -11,6 +13,7 @@ body {
     background-color: var(--bg);
 }
 
+/******************************BOARD STYLES************************************/
 .board-container {
     display: flex;
     justify-content: center;
@@ -23,14 +26,14 @@ body {
 }
 
 .cell {
-    color: gold;
+    color: var(--font);
     background-color: var(--bg);
     width: 15vw;
     height: 10vw;
     min-width: 150px;
     min-height: 100px;
     margin: 10px;
-    border: 4px solid gold;
+    border: 4px solid var(--font);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -48,7 +51,7 @@ body {
 }
 
 .question:hover:has(.face-value) {
-    background-color: #0000bb;
+    background-color: var(--bg-hover);
 }
 
 .topic-name {
@@ -58,4 +61,26 @@ body {
 
 .invisible {
     display: none;
+}
+
+/*********************FULL SCREEN QUESTION DISPLAY*****************************/
+.question-display {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg);
+    overflow: hidden;
+    margin: 0;
+    border: none;
+    color: var(--font);
+    font-size: 72px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    padding: 75px;
+}
+
+.question-time {
+    height: 100px;
 }
