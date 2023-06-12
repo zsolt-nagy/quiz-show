@@ -2,6 +2,8 @@ let board = document.querySelector(".js-board");
 let questionDisplayNode = document.querySelector(".js-question-display");
 let questionTextNode = document.querySelector(".js-question-text");
 let questionTimeLeftNode = document.querySelector(".js-question-time");
+let scoreContainer = document.querySelector(".js-score");
+let playerDataInQuestionBox = document.querySelector(".js-player-data-in-question");
 
 let categoryList = null;
 let questionLists = null;
@@ -10,8 +12,24 @@ let blockNewQuestions = false;
 let questionStartTimestamp = null;
 let questionTimerId = null;
 
+let players = [
+    {
+        name: "Player 1",
+        score: 0,
+    },
+    {
+        name: "Player 2",
+        score: 0,
+    },
+    {
+        name: "Player 3",
+        score: 0,
+    },
+];
+
 // Initialization
 function initialize() {
+    renderPlayers(scoreContainer);
     // get categories
     fetch("https://opentdb.com/api_category.php")
         .then((x) => x.json())
@@ -19,8 +37,23 @@ function initialize() {
 }
 
 function testInitialize() {
+    renderPlayers(scoreContainer);
     questionLists = testQuestions;
     renderBoard();
+}
+
+// players
+function renderPlayers(container) {
+    container.innerHTML = players
+        .map(
+            (player) => `
+        <div class="player-container">
+            <div class="player-name">${player.name}</div>
+            <div class="player-score">${player.score}</div>
+        </div> 
+    `
+        )
+        .join("\n");
 }
 
 // Rendering and retrieval of questions
@@ -123,6 +156,7 @@ function questionTick() {
 
 function showQuestion(question) {
     questionTextNode.innerHTML = question.question;
+    renderPlayers(playerDataInQuestionBox);
     questionDisplayNode.classList.remove("invisible");
     questionStartTimestamp = new Date().getTime();
     questionTimerId = setInterval(questionTick, 100);
