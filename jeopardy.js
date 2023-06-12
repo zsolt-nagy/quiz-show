@@ -16,14 +16,17 @@ let players = [
     {
         name: "Player 1",
         score: 0,
+        isSelected: false,
     },
     {
         name: "Player 2",
         score: 0,
+        isSelected: false,
     },
     {
         name: "Player 3",
         score: 0,
+        isSelected: false,
     },
 ];
 
@@ -43,13 +46,22 @@ function testInitialize() {
 }
 
 // players
-function renderPlayers(container) {
+function renderPlayerClassList(isClickable, isSelected) {
+    return `
+        player-container 
+        ${isSelected ? "selected" : isClickable ? "clickable" : ""}
+    `.replaceAll("\n", "");
+}
+
+function renderPlayers(container, isClickable = false) {
     container.innerHTML = players
         .map(
-            (player) => `
-        <div class="player-container">
-            <div class="player-name">${player.name}</div>
-            <div class="player-score">${player.score}</div>
+            (player, index) => `
+        <div 
+            class="player-container ${player.isSelected ? "selected" : isClickable ? "clickable" : ""}" 
+            data-index="${index}">
+                <div class="player-name">${player.name}</div>
+                <div class="player-score">${player.score}</div>
         </div> 
     `
         )
@@ -156,7 +168,7 @@ function questionTick() {
 
 function showQuestion(question) {
     questionTextNode.innerHTML = question.question;
-    renderPlayers(playerDataInQuestionBox);
+    renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
     questionDisplayNode.classList.remove("invisible");
     questionStartTimestamp = new Date().getTime();
     questionTimerId = setInterval(questionTick, 100);
@@ -189,4 +201,26 @@ function boardClicked(event) {
     }
 }
 
+// Player action
+function getTargetPlayerFromEvent(event) {
+    for (let i = 0; i < players.length; i++) {
+        if (playerDataInQuestionBox.children[i].contains(event.target)) {
+            return i;
+        }
+    }
+    return null;
+}
+
+function playerAnswerIndicated(event) {
+    if (players.some((player) => player.isSelected)) return; // if a player is answering, don't allow clicks
+    let targetPlayer = getTargetPlayerFromEvent(event);
+    if (typeof targetPlayer === "number") {
+        players[targetPlayer].isSelected = true;
+        renderPlayers(playerDataInQuestionBox, false); // make sure player is not clickable
+    }
+}
+
+// Action Listeners
 board.addEventListener("click", boardClicked);
+
+playerDataInQuestionBox.addEventListener("click", playerAnswerIndicated);

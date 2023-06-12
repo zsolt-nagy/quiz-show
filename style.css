@@ -64,7 +64,7 @@ body {
 
 /*********************FULL SCREEN QUESTION DISPLAY*****************************/
 .question-display {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
@@ -107,4 +107,16 @@ body {
 
 .player-score {
     text-align: right;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+.player-container.clickable:hover {
+    background-color: var(--bg-hover);
+}
+
+.player-container.selected {
+    background-color: rgb(139, 0, 98);
 }
