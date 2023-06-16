@@ -38,9 +38,15 @@ const ACTIONS = {
     SHOW: "SHOW",
 };
 
-// Initialization
+const QUESTION_STATES = {
+    DONE: "DONE",
+    ACTIVE: "ACTIVE",
+    // undefined: not yet selected
+};
+
+// ****************  Initialization ***********************
 function initialize() {
-    renderPlayers(scoreContainer);
+    render();
     // get categories
     fetch("https://opentdb.com/api_category.php")
         .then((x) => x.json())
@@ -48,33 +54,16 @@ function initialize() {
 }
 
 function testInitialize() {
-    renderPlayers(scoreContainer);
     questionLists = testQuestions;
-    renderBoard();
+    render();
 }
 
-// players
-function renderPlayerClassList(isClickable, isSelected) {
-    return `
-        player-container 
-        ${isSelected ? "selected" : isClickable ? "clickable" : ""}
-    `.replaceAll("\n", "");
-}
-
-function actionButtonClicked(action, playerIndex) {
-    switch (action) {
-        case ACTIONS.RIGHT:
-            players[playerIndex].score += currentQuestionValue;
-            endQuestion();
-            break;
-        case ACTIONS.WRONG:
-            players[playerIndex].score -= currentQuestionValue;
-            endQuestion();
-            // renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
-            break;
-        case ACTIONS.SHOW:
-            answerTextNode.innerText = questionTextNode.dataset.answer;
-            break;
+/* **************** Rendering ************************** */
+function render() {
+    renderPlayers(scoreContainer);
+    renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
+    if (Array.isArray(questionLists)) {
+        renderBoard();
     }
 }
 
@@ -106,18 +95,50 @@ function renderPlayers(container, isClickable = false) {
         .join("\n");
 }
 
+// players
+function renderPlayerClassList(isClickable, isSelected) {
+    return `
+        player-container 
+        ${isSelected ? "selected" : isClickable ? "clickable" : ""}
+    `.replaceAll("\n", "");
+}
+
 // Rendering and retrieval of questions
 function renderQuestions(questionsList, columnIndex) {
     let html = "";
     for (let i = 0; i < questionsList.length; i++) {
         let question = questionsList[i];
         let score = 100 * (i + 1);
-        html += `
-            <div class="js-question question cell">
-                <div class="js-face-value face-value" data-column="${columnIndex}" data-row="${i}">${score}</div>
-                <div class="question-text invisible">${question.question}</div>
-            </div>
-        `;
+
+        if (typeof question.state === "undefined") {
+            html += `
+                <div class="js-question question cell">
+                    <div 
+                        class="js-face-value face-value" 
+                        data-column="${columnIndex}" 
+                        data-row="${i}">
+                        ${score}
+                    </div>
+                    <div class="question-text invisible">${question.question}</div>
+                </div>
+            `;
+        } else if (question.state === QUESTION_STATES.DONE) {
+            html += `
+                <div class="js-question question cell">
+                    <div class="js-question-done"></div>
+                    <div class="question-text invisible">${question.question}</div>
+                </div>
+            `;
+        } else if (question.state === QUESTION_STATES.ACTIVE) {
+            html += `
+                <div class="js-question question cell">
+                    <div class="js-question-done">
+                        ?
+                    </div>
+                    <div class="question-text invisible">${question.question}</div>
+                </div>
+            `;
+        }
     }
     return html;
 }
@@ -153,7 +174,7 @@ function selectCategories(n) {
 
 function questionsRetrieved(response) {
     questionLists = response.filter((x) => x.status === "fulfilled").map((x) => x.value.results);
-    renderBoard();
+    render();
 }
 
 function retrieveQuestions(selectedCategories) {
@@ -204,8 +225,7 @@ function endQuestion() {
     blockNewQuestions = false;
     answerTextNode.innerText = "";
 
-    renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
-    renderPlayers(scoreContainer);
+    render();
 }
 
 function questionTick() {
@@ -224,10 +244,11 @@ function questionTick() {
 function showQuestion(currentQuestion) {
     questionTextNode.innerHTML = currentQuestion.question;
     questionTextNode.dataset.answer = currentQuestion.correct_answer;
-    renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
     questionDisplayNode.classList.remove("invisible");
     questionStartTimestamp = new Date().getTime();
     questionTimerId = setInterval(questionTick, 100);
+
+    render();
 }
 
 function selectQuestion(targetNode) {
@@ -235,16 +256,16 @@ function selectQuestion(targetNode) {
     let columnIndex = targetNode.dataset.column;
     currentQuestionValue = Number.parseInt(targetNode.innerText);
 
-    targetNode.classList.remove("js-face-value");
-    targetNode.classList.remove("face-value");
-    targetNode.classList.add("js-question-done");
-    targetNode.innerHTML = "?";
+    questionLists[columnIndex][rowIndex].state = QUESTION_STATES.ACTIVE;
+    render();
 
     blockNewQuestions = true;
 
     setTimeout(() => {
         targetNode.innerHTML = "";
+        questionLists[columnIndex][rowIndex].state = QUESTION_STATES.DONE;
         showQuestion(questionLists[columnIndex][rowIndex]);
+        render();
     }, 1000);
 }
 
@@ -273,13 +294,29 @@ function playerAnswerIndicated(event) {
     let targetPlayer = getTargetPlayerFromEvent(event);
     if (typeof targetPlayer === "number") {
         players[targetPlayer].isSelected = true;
-        renderPlayers(playerDataInQuestionBox, false); // make sure player is not clickable
+        render();
     }
 }
 
-// Action Listeners
-board.addEventListener("click", boardClicked);
+// ****************** ACtion Handlers ***********************
+function actionButtonClicked(action, playerIndex) {
+    switch (action) {
+        case ACTIONS.RIGHT:
+            players[playerIndex].score += currentQuestionValue;
+            endQuestion();
+            break;
+        case ACTIONS.WRONG:
+            players[playerIndex].score -= currentQuestionValue;
+            endQuestion();
+            break;
+        case ACTIONS.SHOW:
+            answerTextNode.innerText = questionTextNode.dataset.answer;
+            break;
+    }
+}
 
+// ****************** Action Listeners **********************
+board.addEventListener("click", boardClicked);
 playerDataInQuestionBox.addEventListener("click", playerAnswerIndicated);
 
 initialize();
