@@ -10,7 +10,7 @@ let categoryList = null;
 let questionLists = null;
 
 let blockNewQuestions = false;
-let questionStartTimestamp = null;
+let questionStartTimestamp = null; // start viewing a question
 let questionTimerId = null;
 let currentQuestionValue = 0;
 
@@ -46,11 +46,12 @@ const QUESTION_STATES = {
 
 // ****************  Initialization ***********************
 function initialize() {
-    render();
     // get categories
     fetch("https://opentdb.com/api_category.php")
         .then((x) => x.json())
         .then(categoriesLoaded);
+
+    render();
 }
 
 function testInitialize() {
@@ -64,6 +65,11 @@ function render() {
     renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
     if (Array.isArray(questionLists)) {
         renderBoard();
+    }
+    if (questionStartTimestamp === null) {
+        questionDisplayNode.classList.add("invisible");
+    } else {
+        questionDisplayNode.classList.remove("invisible");
     }
 }
 
@@ -95,15 +101,6 @@ function renderPlayers(container, isClickable = false) {
         .join("\n");
 }
 
-// players
-function renderPlayerClassList(isClickable, isSelected) {
-    return `
-        player-container 
-        ${isSelected ? "selected" : isClickable ? "clickable" : ""}
-    `.replaceAll("\n", "");
-}
-
-// Rendering and retrieval of questions
 function renderQuestions(questionsList, columnIndex) {
     let html = "";
     for (let i = 0; i < questionsList.length; i++) {
@@ -155,6 +152,14 @@ function renderBoard() {
     }
 
     board.innerHTML = html;
+}
+
+// players
+function renderPlayerClassList(isClickable, isSelected) {
+    return `
+        player-container 
+        ${isSelected ? "selected" : isClickable ? "clickable" : ""}
+    `.replaceAll("\n", "");
 }
 
 function selectCategories(n) {
@@ -218,9 +223,9 @@ function deselectAllPlayers() {
 
 function endQuestion() {
     clearInterval(questionTimerId);
-    questionDisplayNode.classList.add("invisible");
 
     deselectAllPlayers();
+    questionStartTimestamp = null;
     currentQuestionValue = 0;
     blockNewQuestions = false;
     answerTextNode.innerText = "";
@@ -244,7 +249,6 @@ function questionTick() {
 function showQuestion(currentQuestion) {
     questionTextNode.innerHTML = currentQuestion.question;
     questionTextNode.dataset.answer = currentQuestion.correct_answer;
-    questionDisplayNode.classList.remove("invisible");
     questionStartTimestamp = new Date().getTime();
     questionTimerId = setInterval(questionTick, 100);
 
@@ -265,7 +269,6 @@ function selectQuestion(targetNode) {
         targetNode.innerHTML = "";
         questionLists[columnIndex][rowIndex].state = QUESTION_STATES.DONE;
         showQuestion(questionLists[columnIndex][rowIndex]);
-        render();
     }, 1000);
 }
 
