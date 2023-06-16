@@ -120,3 +120,28 @@ body {
 .player-container.selected {
     background-color: rgb(139, 0, 98);
 }
+
+.player-action-button-container {
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.player-action-button {
+    border: none;
+    background: none;
+    color: var(--font);
+    font-size: 36px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.player-action-button.green {
+    color: rgb(24, 180, 24);
+}
+
+.player-action-button.red {
+    color: darkred;
+}
+
+
+

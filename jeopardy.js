@@ -4,6 +4,7 @@ let questionTextNode = document.querySelector(".js-question-text");
 let questionTimeLeftNode = document.querySelector(".js-question-time");
 let scoreContainer = document.querySelector(".js-score");
 let playerDataInQuestionBox = document.querySelector(".js-player-data-in-question");
+let answerTextNode = document.querySelector(".js-answer-text");
 
 let categoryList = null;
 let questionLists = null;
@@ -11,6 +12,7 @@ let questionLists = null;
 let blockNewQuestions = false;
 let questionStartTimestamp = null;
 let questionTimerId = null;
+let currentQuestionValue = 0;
 
 let players = [
     {
@@ -29,6 +31,12 @@ let players = [
         isSelected: false,
     },
 ];
+
+const ACTIONS = {
+    RIGHT: "RIGHT",
+    WRONG: "WRONG",
+    SHOW: "SHOW",
+};
 
 // Initialization
 function initialize() {
@@ -53,16 +61,46 @@ function renderPlayerClassList(isClickable, isSelected) {
     `.replaceAll("\n", "");
 }
 
+function actionButtonClicked(action, playerIndex) {
+    switch (action) {
+        case ACTIONS.RIGHT:
+            players[playerIndex].score += currentQuestionValue;
+            endQuestion();
+            break;
+        case ACTIONS.WRONG:
+            players[playerIndex].score -= currentQuestionValue;
+            endQuestion();
+            // renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
+            break;
+        case ACTIONS.SHOW:
+            answerTextNode.innerText = questionTextNode.dataset.answer;
+            break;
+    }
+}
+
 function renderPlayers(container, isClickable = false) {
     container.innerHTML = players
         .map(
             (player, index) => `
-        <div 
-            class="player-container ${player.isSelected ? "selected" : isClickable ? "clickable" : ""}" 
-            data-index="${index}">
-                <div class="player-name">${player.name}</div>
-                <div class="player-score">${player.score}</div>
-        </div> 
+        <div>
+            <div 
+                class="player-container ${player.isSelected ? "selected" : isClickable ? "clickable" : ""}" 
+                data-index="${index}">
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-score">${player.score}</div>
+            </div> 
+            ${
+                player.isSelected
+                    ? `
+            <div class="player-action-button-container">
+                <button class="player-action-button green" onclick="actionButtonClicked('${ACTIONS.RIGHT}', ${index})">🗸</button>
+                <button class="player-action-button red" onclick="actionButtonClicked('${ACTIONS.WRONG}', ${index})">✗</button>
+                <button class="player-action-button" onclick="actionButtonClicked('${ACTIONS.SHOW}', ${index})">👁</button>
+            </div>            
+            `
+                    : ""
+            }
+        </div>
     `
         )
         .join("\n");
@@ -151,6 +189,25 @@ function getTargetNodeFromEvent(event) {
     return targetNode;
 }
 
+function deselectAllPlayers() {
+    for (let player of players) {
+        player.isSelected = false;
+    }
+}
+
+function endQuestion() {
+    clearInterval(questionTimerId);
+    questionDisplayNode.classList.add("invisible");
+
+    deselectAllPlayers();
+    currentQuestionValue = 0;
+    blockNewQuestions = false;
+    answerTextNode.innerText = "";
+
+    renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
+    renderPlayers(scoreContainer);
+}
+
 function questionTick() {
     let currentTimestamp = new Date().getTime();
     let timeElapsed = currentTimestamp - questionStartTimestamp;
@@ -158,16 +215,15 @@ function questionTick() {
     let dots = new Array(numberOfDots).fill("•").join("");
     questionTimeLeftNode.innerHTML = dots;
 
+    // Time is up
     if (numberOfDots === 0) {
-        clearInterval(questionTimerId);
-        questionDisplayNode.classList.add("invisible");
-        // TODO clean up
-        blockNewQuestions = false;
+        endQuestion();
     }
 }
 
-function showQuestion(question) {
-    questionTextNode.innerHTML = question.question;
+function showQuestion(currentQuestion) {
+    questionTextNode.innerHTML = currentQuestion.question;
+    questionTextNode.dataset.answer = currentQuestion.correct_answer;
     renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
     questionDisplayNode.classList.remove("invisible");
     questionStartTimestamp = new Date().getTime();
@@ -177,6 +233,7 @@ function showQuestion(question) {
 function selectQuestion(targetNode) {
     let rowIndex = targetNode.dataset.row;
     let columnIndex = targetNode.dataset.column;
+    currentQuestionValue = Number.parseInt(targetNode.innerText);
 
     targetNode.classList.remove("js-face-value");
     targetNode.classList.remove("face-value");
@@ -224,3 +281,5 @@ function playerAnswerIndicated(event) {
 board.addEventListener("click", boardClicked);
 
 playerDataInQuestionBox.addEventListener("click", playerAnswerIndicated);
+
+initialize();
