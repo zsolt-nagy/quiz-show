@@ -1,4 +1,3 @@
-let board = document.querySelector(".js-board");
 let questionDisplayNode = document.querySelector(".js-question-display");
 let questionTextNode = document.querySelector(".js-question-text");
 let questionTimeLeftNode = document.querySelector(".js-question-time");
@@ -7,9 +6,9 @@ let playerDataInQuestionBox = document.querySelector(".js-player-data-in-questio
 let answerTextNode = document.querySelector(".js-answer-text");
 
 let categoryList = null;
-let questionLists = null;
 
-let blockNewQuestions = false;
+let gameBoard = null;
+
 let questionStartTimestamp = null; // start viewing a question
 let questionTimerId = null;
 let currentQuestionValue = 0;
@@ -38,12 +37,6 @@ const ACTIONS = {
     SHOW: "SHOW",
 };
 
-const QUESTION_STATES = {
-    DONE: "DONE",
-    ACTIVE: "ACTIVE",
-    // undefined: not yet selected
-};
-
 // ****************  Initialization ***********************
 function initialize() {
     // get categories
@@ -54,17 +47,12 @@ function initialize() {
     render();
 }
 
-function testInitialize() {
-    questionLists = testQuestions;
-    render();
-}
-
 /* **************** Rendering ************************** */
 function render() {
     renderPlayers(scoreContainer);
     renderPlayers(playerDataInQuestionBox, true); // second argument adds click event listeners
-    if (Array.isArray(questionLists)) {
-        renderBoard();
+    if (gameBoard !== null) {
+        gameBoard.renderBoard();
     }
     if (questionStartTimestamp === null) {
         questionDisplayNode.classList.add("invisible");
@@ -101,59 +89,6 @@ function renderPlayers(container, isClickable = false) {
         .join("\n");
 }
 
-function renderQuestions(questionsList, columnIndex) {
-    let html = "";
-    for (let i = 0; i < questionsList.length; i++) {
-        let question = questionsList[i];
-        let score = 100 * (i + 1);
-
-        if (typeof question.state === "undefined") {
-            html += `
-                <div class="js-question question cell">
-                    <div 
-                        class="js-face-value face-value" 
-                        data-column="${columnIndex}" 
-                        data-row="${i}">
-                        ${score}
-                    </div>
-                    <div class="question-text invisible">${question.question}</div>
-                </div>
-            `;
-        } else if (question.state === QUESTION_STATES.DONE) {
-            html += `
-                <div class="js-question question cell">
-                    <div class="js-question-done"></div>
-                    <div class="question-text invisible">${question.question}</div>
-                </div>
-            `;
-        } else if (question.state === QUESTION_STATES.ACTIVE) {
-            html += `
-                <div class="js-question question cell">
-                    <div class="js-question-done">
-                        ?
-                    </div>
-                    <div class="question-text invisible">${question.question}</div>
-                </div>
-            `;
-        }
-    }
-    return html;
-}
-
-function renderBoard() {
-    let html = "";
-    for (let i = 0; i < questionLists.length; i++) {
-        let list = questionLists[i];
-        html += `
-            <section class="topic-container">
-                <div class="topic-name cell">${list[0].category}</div>
-                ${renderQuestions(list, i)}
-            </section>`;
-    }
-
-    board.innerHTML = html;
-}
-
 // players
 function renderPlayerClassList(isClickable, isSelected) {
     return `
@@ -178,7 +113,8 @@ function selectCategories(n) {
 }
 
 function questionsRetrieved(response) {
-    questionLists = response.filter((x) => x.status === "fulfilled").map((x) => x.value.results);
+    let questionLists = response.filter((x) => x.status === "fulfilled").map((x) => x.value.results);
+    gameBoard = new Board(questionLists, document.querySelector(".js-board"), showQuestion);
     render();
 }
 
@@ -197,24 +133,6 @@ function categoriesLoaded(categories) {
     retrieveQuestions(selectedCategories);
 }
 
-// Event handling - gameplay
-function getTargetNodeFromEvent(event) {
-    // navigate to the target node with data-row, data-column attributes
-    let targetNode = event.target;
-    if (targetNode.classList.contains("js-question")) {
-        let questionIdNode = targetNode.querySelector(".js-face-value");
-        if (questionIdNode !== null) {
-            targetNode = questionIdNode;
-        } else {
-            targetNode = null;
-        }
-    } else if (!targetNode.classList.contains("js-face-value")) {
-        targetNode = null;
-    }
-
-    return targetNode;
-}
-
 function deselectAllPlayers() {
     for (let player of players) {
         player.isSelected = false;
@@ -227,7 +145,7 @@ function endQuestion() {
     deselectAllPlayers();
     questionStartTimestamp = null;
     currentQuestionValue = 0;
-    blockNewQuestions = false;
+    gameBoard.unblockBoard();
     answerTextNode.innerText = "";
 
     render();
@@ -246,40 +164,13 @@ function questionTick() {
     }
 }
 
-function showQuestion(currentQuestion) {
-    questionTextNode.innerHTML = currentQuestion.question;
-    questionTextNode.dataset.answer = currentQuestion.correct_answer;
+function showQuestion(columnIndex, rowIndex) {
+    questionTextNode.innerHTML = gameBoard.getQuestionText(columnIndex, rowIndex);
+    questionTextNode.dataset.answer = gameBoard.getCorrectAnswer(columnIndex, rowIndex);
     questionStartTimestamp = new Date().getTime();
     questionTimerId = setInterval(questionTick, 100);
 
     render();
-}
-
-function selectQuestion(targetNode) {
-    let rowIndex = targetNode.dataset.row;
-    let columnIndex = targetNode.dataset.column;
-    currentQuestionValue = Number.parseInt(targetNode.innerText);
-
-    questionLists[columnIndex][rowIndex].state = QUESTION_STATES.ACTIVE;
-    render();
-
-    blockNewQuestions = true;
-
-    setTimeout(() => {
-        targetNode.innerHTML = "";
-        questionLists[columnIndex][rowIndex].state = QUESTION_STATES.DONE;
-        showQuestion(questionLists[columnIndex][rowIndex]);
-    }, 1000);
-}
-
-function boardClicked(event) {
-    if (blockNewQuestions) return;
-
-    let targetNode = getTargetNodeFromEvent(event);
-
-    if (targetNode !== null) {
-        selectQuestion(targetNode);
-    }
 }
 
 // Player action
@@ -319,7 +210,7 @@ function actionButtonClicked(action, playerIndex) {
 }
 
 // ****************** Action Listeners **********************
-board.addEventListener("click", boardClicked);
+
 playerDataInQuestionBox.addEventListener("click", playerAnswerIndicated);
 
 initialize();
